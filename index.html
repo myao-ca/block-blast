@@ -92,7 +92,7 @@ body::after {
   padding: 6px 14px;
   text-align: center;
   min-width: 80px;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 .sc-lbl {
@@ -108,6 +108,141 @@ body::after {
   font-weight: 700;
   color: #fff;
   transition: transform 0.25s, color 0.25s;
+}
+
+.sc-by {
+  font-size: 9px;
+  letter-spacing: 1px;
+  margin-top: 2px;
+  font-weight: 700;
+  transition: color 0.3s;
+}
+
+/* Current player chip in header */
+.player-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 12px 5px 8px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.player-chip:hover {
+  border-color: rgba(255,255,255,0.25);
+}
+.player-chip .chip-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.player-chip .chip-name {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+/* ── PLAYER SELECT SCREEN ─────────────────────────────────── */
+#player-select {
+  position: fixed;
+  inset: 0;
+  z-index: 9700;
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse 70% 50% at 20% 20%, rgba(80,0,160,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 50% at 80% 80%, rgba(0,60,180,0.18) 0%, transparent 60%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 20px;
+  gap: 28px;
+  animation: psIn 0.4s ease-out;
+}
+
+@keyframes psIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+#player-select.hide {
+  animation: psOut 0.35s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes psOut {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(1.04); }
+}
+
+.ps-title {
+  font-size: clamp(22px, 6vw, 36px);
+  font-weight: 900;
+  letter-spacing: 4px;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.ps-title span {
+  display: block;
+  font-size: clamp(14px, 3.5vw, 20px);
+  font-weight: 400;
+  letter-spacing: 6px;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 6px;
+}
+
+.ps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+  max-width: 380px;
+}
+
+.ps-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 8px;
+  border-radius: 16px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.2s, border-color 0.2s;
+  background: var(--surface);
+}
+
+.ps-btn:hover, .ps-btn:active {
+  transform: scale(1.06) translateY(-2px);
+}
+
+.ps-btn .ps-emoji {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.ps-btn .ps-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.ps-btn .ps-best-label {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.45);
+  font-family: 'Space Mono', monospace;
+}
+
+.ps-btn .ps-best-score {
+  font-size: 13px;
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
 }
 
 .sc-val.bump {
@@ -176,6 +311,14 @@ body::after {
     0 0 80px #ff6600,
     0 0 120px #ff3366;
   text-transform: uppercase;
+}
+
+.nb-player {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(20px, 6vw, 36px);
+  font-weight: 900;
+  letter-spacing: 4px;
+  margin: -4px 0 4px;
 }
 
 .nb-score {
@@ -498,17 +641,23 @@ body::after {
 </head>
 <body>
 
+<div id="player-select"></div>
+
 <div class="wrap">
   <header class="hdr">
-    <div class="logo">Block Blast</div>
+    <div class="player-chip" id="player-chip" onclick="showPlayerSelect()">
+      <div class="chip-dot" id="chip-dot"></div>
+      <div class="chip-name" id="chip-name">?</div>
+    </div>
     <div class="scores">
       <div class="sc-box">
         <div class="sc-lbl">SCORE</div>
         <div class="sc-val" id="score-el">0</div>
       </div>
-      <div class="sc-box">
+      <div class="sc-box" id="best-box">
         <div class="sc-lbl">BEST</div>
         <div class="sc-val" id="best-el">0</div>
+        <div class="sc-by" id="best-by"></div>
       </div>
     </div>
   </header>
@@ -583,24 +732,53 @@ const SHAPES = [
   [[0,1],[1,1]],                            // mini-J2
 ];
 
+// ── Players ──────────────────────────────────────────────────────────────────
+const PLAYERS = [
+  { name: '芯芯', color: '#ff44aa', emoji: '👧' },
+  { name: '真真', color: '#cc44ff', emoji: '🧒‍♀️' },
+  { name: '爸爸', color: '#00aaff', emoji: '👨' },
+  { name: '妈妈', color: '#ff6600', emoji: '👩' },
+  { name: '姥姥', color: '#00ff88', emoji: '👵' },
+  { name: '姥爷', color: '#ffcc00', emoji: '👴' },
+];
+
+function playerBestKey(name) { return 'bb_best_' + name; }
+function getPlayerBest(name) { return parseInt(localStorage.getItem(playerBestKey(name)) || '0'); }
+function setPlayerBest(name, val) { localStorage.setItem(playerBestKey(name), val); }
+
+// Global best (across all players)
+function getGlobalBest() {
+  return {
+    score: parseInt(localStorage.getItem('bb_global_score') || '0'),
+    player: localStorage.getItem('bb_global_player') || '',
+  };
+}
+function setGlobalBest(score, player) {
+  localStorage.setItem('bb_global_score', score);
+  localStorage.setItem('bb_global_player', player);
+}
+
 // ── State ───────────────────────────────────────────────────────────────────
 let grid = [];          // grid[r][c] = 0 (empty) | colorIndex+1
 let pieces = [];        // [piece0, piece1, piece2]
 let used = [];          // [bool, bool, bool]
 let score = 0;
-let best = parseInt(localStorage.getItem('bb_best') || '0');
 let animating = false;
 let newBestShown = false; // only trigger once per game
+let currentPlayer = null; // { name, color, emoji }
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
-const gridEl   = document.getElementById('grid');
-const ghostEl  = document.getElementById('ghost');
-const scoreEl  = document.getElementById('score-el');
-const bestEl   = document.getElementById('best-el');
-const goEl     = document.getElementById('gameover');
-const goScore  = document.getElementById('go-score');
-const goBest   = document.getElementById('go-best');
-const trayEl   = document.getElementById('tray');
+const gridEl    = document.getElementById('grid');
+const ghostEl   = document.getElementById('ghost');
+const scoreEl   = document.getElementById('score-el');
+const bestEl    = document.getElementById('best-el');
+const bestByEl  = document.getElementById('best-by');
+const goEl      = document.getElementById('gameover');
+const goScore   = document.getElementById('go-score');
+const goBest    = document.getElementById('go-best');
+const trayEl    = document.getElementById('tray');
+const chipDot   = document.getElementById('chip-dot');
+const chipName  = document.getElementById('chip-name');
 let cells = []; // cells[r][c] = div
 
 // ── Utilities ───────────────────────────────────────────────────────────────
@@ -873,13 +1051,20 @@ function addScore(pts) {
     scoreEl.classList.add('bump');
     setTimeout(() => scoreEl.classList.remove('bump'), 280);
   }
-  if (score > best) {
-    best = score;
-    localStorage.setItem('bb_best', best);
-    bestEl.textContent = best;
+  // Update player personal best
+  if (currentPlayer) {
+    const pb = getPlayerBest(currentPlayer.name);
+    if (score > pb) setPlayerBest(currentPlayer.name, score);
+  }
+
+  // Update global best
+  const gb = getGlobalBest();
+  if (score > gb.score) {
+    setGlobalBest(score, currentPlayer ? currentPlayer.name : '');
+    renderBestBox();
     if (!newBestShown) {
       newBestShown = true;
-      showNewBest(best);
+      showNewBest(score);
     }
   }
 }
@@ -893,9 +1078,13 @@ function showNewBest(val) {
 
   const text = document.createElement('div');
   text.className = 'nb-text';
+  const playerLine = currentPlayer
+    ? `<div class="nb-player" style="color:${currentPlayer.color};text-shadow:0 0 14px ${currentPlayer.color}">${currentPlayer.emoji} ${currentPlayer.name}</div>`
+    : '';
   text.innerHTML = `
     <div class="nb-new">New</div>
     <div class="nb-best">BEST!</div>
+    ${playerLine}
     <div class="nb-score">${val}</div>
   `;
 
@@ -947,11 +1136,78 @@ function canAnyFit() {
   });
 }
 
+function renderBestBox() {
+  const gb = getGlobalBest();
+  bestEl.textContent = gb.score;
+  const p = PLAYERS.find(p => p.name === gb.player);
+  if (p) {
+    bestByEl.textContent = p.name;
+    bestByEl.style.color = p.color;
+  } else {
+    bestByEl.textContent = '';
+  }
+}
+
 function triggerGameOver() {
+  const gb = getGlobalBest();
   goScore.textContent = score;
-  goBest.textContent = score >= best ? 'NEW BEST!' : 'BEST: ' + best;
-  goBest.style.color = score >= best ? '#ffcc00' : 'rgba(255,255,255,0.35)';
+  goBest.textContent = score >= gb.score && score > 0 ? 'NEW BEST!' : 'BEST: ' + gb.score;
+  goBest.style.color = score >= gb.score && score > 0 ? '#ffcc00' : 'rgba(255,255,255,0.35)';
   goEl.classList.add('show');
+}
+
+// ── Player Select ─────────────────────────────────────────────────────────────
+function showPlayerSelect() {
+  const ps = document.getElementById('player-select');
+  ps.classList.remove('hide');
+  ps.innerHTML = '';
+
+  const title = document.createElement('div');
+  title.className = 'ps-title';
+  title.innerHTML = '<span>BLOCK BLAST</span>你是谁？';
+  ps.appendChild(title);
+
+  const grid = document.createElement('div');
+  grid.className = 'ps-grid';
+
+  PLAYERS.forEach(player => {
+    const btn = document.createElement('button');
+    btn.className = 'ps-btn';
+    btn.style.borderColor = player.color + '55';
+    btn.style.boxShadow = `0 0 16px ${player.color}22`;
+
+    const pb = getPlayerBest(player.name);
+    btn.innerHTML = `
+      <div class="ps-emoji">${player.emoji}</div>
+      <div class="ps-name" style="color:${player.color}">${player.name}</div>
+      <div class="ps-best-label">最高分</div>
+      <div class="ps-best-score" style="color:${player.color}">${pb || '—'}</div>
+    `;
+
+    btn.addEventListener('click', () => selectPlayer(player));
+    btn.addEventListener('touchend', e => { e.preventDefault(); selectPlayer(player); });
+    grid.appendChild(btn);
+  });
+
+  ps.appendChild(grid);
+  ps.style.display = 'flex';
+}
+
+function selectPlayer(player) {
+  currentPlayer = player;
+
+  // Update chip
+  chipDot.style.background = player.color;
+  chipDot.style.boxShadow = `0 0 6px ${player.color}`;
+  chipName.textContent = player.name;
+  chipName.style.color = player.color;
+
+  // Hide player select
+  const ps = document.getElementById('player-select');
+  ps.classList.add('hide');
+  setTimeout(() => { ps.style.display = 'none'; }, 360);
+
+  initGame();
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
@@ -961,7 +1217,7 @@ function initGame() {
   animating = false;
   newBestShown = false;
   scoreEl.textContent = '0';
-  bestEl.textContent = best;
+  renderBestBox();
   goEl.classList.remove('show');
   renderGrid();
   generatePieces();
@@ -1169,7 +1425,7 @@ document.getElementById('restart-btn').addEventListener('click', initGame);
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 buildGrid();
-initGame();
+showPlayerSelect();
 </script>
 </body>
 </html>
