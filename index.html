@@ -800,6 +800,25 @@ body::after {
 }
 .lb-close:hover { color: #fff; background: rgba(255,255,255,0.04); }
 
+/* ── LANGUAGE TOGGLE ─────────────────────────────────────── */
+.lang-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  height: 38px;
+  padding: 0 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s;
+  flex-shrink: 0;
+  color: var(--text-primary);
+}
+.lang-btn:hover { border-color: rgba(255,255,255,0.3); transform: scale(1.06); }
+
 /* ── THEME SWITCHER ──────────────────────────────────────── */
 .theme-btn {
   background: var(--surface);
@@ -972,13 +991,14 @@ body.deepsea .sc-val { color: #e0f4ff; }
     </div>
     <div class="trophy-btn" onclick="showLeaderboard()" title="排行榜">🏆</div>
     <div class="theme-btn" id="theme-btn" onclick="toggleThemePicker(event)" title="换主题">🎨</div>
+    <div class="lang-btn" id="lang-btn" onclick="toggleLang()">中</div>
     <div class="scores">
       <div class="sc-box">
-        <div class="sc-lbl">SCORE</div>
+        <div class="sc-lbl" id="lbl-score">SCORE</div>
         <div class="sc-val" id="score-el">0</div>
       </div>
       <div class="sc-box" id="best-box">
-        <div class="sc-lbl">BEST</div>
+        <div class="sc-lbl" id="lbl-best">BEST</div>
         <div class="sc-val" id="best-el">0</div>
         <div class="sc-by" id="best-by"></div>
       </div>
@@ -988,9 +1008,9 @@ body.deepsea .sc-val { color: #e0f4ff; }
   <div class="grid-wrap">
     <div id="grid"></div>
     <div id="gameover">
-      <div class="go-title">GAME OVER</div>
+      <div class="go-title" id="lbl-go-title">GAME OVER</div>
       <div class="go-score" id="go-score">0</div>
-      <div class="go-sub">FINAL SCORE</div>
+      <div class="go-sub" id="lbl-go-sub">FINAL SCORE</div>
       <div class="go-best" id="go-best"></div>
       <button class="btn" id="restart-btn">PLAY AGAIN</button>
     </div>
@@ -1014,11 +1034,11 @@ body.deepsea .sc-val { color: #e0f4ff; }
 <div id="leaderboard" onclick="if(event.target===this)hideLeaderboard()">
   <div class="lb-panel">
     <div class="lb-header">
-      <div class="lb-title">🏆 排行榜</div>
-      <div class="lb-subtitle">个人最高分</div>
+      <div class="lb-title" id="lbl-lb-title">🏆 排行榜</div>
+      <div class="lb-subtitle" id="lbl-lb-sub">个人最高分</div>
     </div>
     <div class="lb-list" id="lb-list"></div>
-    <button class="lb-close" onclick="hideLeaderboard()">关闭</button>
+    <button class="lb-close" id="lbl-lb-close" onclick="hideLeaderboard()">关闭</button>
   </div>
 </div>
 
@@ -1391,8 +1411,8 @@ async function checkAndClear() {
 }
 
 function showComboBanner(numLines, rows, cols) {
-  const label = numLines >= 4 ? '🔥 MEGA BLAST!' :
-                numLines >= 3 ? '⚡ TRIPLE!' : '✦ DOUBLE!';
+  const label = numLines >= 4 ? t('mega') :
+                numLines >= 3 ? t('triple') : t('double');
   const el = document.createElement('div');
   el.className = 'combo-banner';
   el.textContent = label;
@@ -1520,8 +1540,8 @@ function showNewBest(val) {
     ? `<div class="nb-player" style="color:${currentPlayer.color};text-shadow:0 0 14px ${currentPlayer.color}">${currentPlayer.emoji} ${currentPlayer.name}</div>`
     : '';
   text.innerHTML = `
-    <div class="nb-new">New</div>
-    <div class="nb-best">BEST!</div>
+    <div class="nb-new">${t('newWord')}</div>
+    <div class="nb-best">${t('bestWord')}</div>
     ${playerLine}
     <div class="nb-score">${val}</div>
   `;
@@ -1589,13 +1609,16 @@ function renderBestBox() {
 function triggerGameOver() {
   const gb = getGlobalBest();
   goScore.textContent = score;
-  goBest.textContent = score >= gb.score && score > 0 ? 'NEW BEST!' : 'BEST: ' + gb.score;
+  goBest.textContent = score >= gb.score && score > 0 ? t('newBestBanner') : t('bestPrefix') + gb.score;
   goBest.style.color = score >= gb.score && score > 0 ? '#ffcc00' : 'rgba(255,255,255,0.35)';
   goEl.classList.add('show');
 }
 
 // ── Leaderboard ───────────────────────────────────────────────────────────────
 function showLeaderboard() {
+  document.getElementById('lbl-lb-title').textContent = t('leaderboard');
+  document.getElementById('lbl-lb-sub').textContent   = t('personalBest');
+  document.getElementById('lbl-lb-close').textContent = t('close');
   const ranked = PLAYERS
     .map(p => ({ ...p, best: getPlayerBest(p.name) }))
     .sort((a, b) => b.best - a.best);
@@ -1622,7 +1645,7 @@ function showLeaderboard() {
       <div class="lb-emoji">${p.emoji}</div>
       <div class="lb-info">
         <div class="lb-name" style="color:${p.color}">${p.name}</div>
-        ${isMe ? '<div class="lb-me-tag">▶ 当前玩家</div>' : ''}
+        ${isMe ? `<div class="lb-me-tag">${t('currentPlayerTag')}</div>` : ''}
       </div>
       <div class="lb-score ${p.best ? '' : 'zero'}">${p.best || '—'}</div>
       <div class="lb-bar-wrap">
@@ -1656,7 +1679,7 @@ function showPlayerSelect() {
 
   const title = document.createElement('div');
   title.className = 'ps-title';
-  title.innerHTML = '<span>BLOCK BLAST</span>你是谁？';
+  title.innerHTML = `<span>BLOCK BLAST</span>${t('whoAreYou')}`;
   ps.appendChild(title);
 
   const grid = document.createElement('div');
@@ -1710,16 +1733,16 @@ function showDifficultySelect() {
   ps.style.display = 'flex';
 
   const diffs = [
-    { key: 'easy',   emoji: '😊', label: '简单', desc: '小块为主，轻松上手', color: '#00cc66' },
-    { key: 'normal', emoji: '🎮', label: '标准', desc: '经典玩法，均衡挑战', color: '#00aaff' },
-    { key: 'hard',   emoji: '🔥', label: '困难', desc: '大块多多，考验布局', color: '#ff4444' },
+    { key: 'easy',   emoji: '😊', label: t('easy'), desc: t('easyDesc'), color: '#00cc66' },
+    { key: 'normal', emoji: '🎮', label: t('normal'), desc: t('normalDesc'), color: '#00aaff' },
+    { key: 'hard',   emoji: '🔥', label: t('hard'), desc: t('hardDesc'), color: '#ff4444' },
   ];
 
   const saved = localStorage.getItem('bb_diff_' + currentPlayer.name) || 'normal';
 
   const title = document.createElement('div');
   title.className = 'ps-title';
-  title.innerHTML = `<span style="color:${currentPlayer.color}">${currentPlayer.emoji} ${currentPlayer.name}</span>选择难度`;
+  title.innerHTML = `<span style="color:${currentPlayer.color}">${currentPlayer.emoji} ${currentPlayer.name}</span>${t('chooseDiff')}`;
   ps.appendChild(title);
 
   const grid = document.createElement('div');
@@ -1754,7 +1777,7 @@ function showDifficultySelect() {
   const back = document.createElement('button');
   back.className = 'btn';
   back.style.cssText = 'background:rgba(255,255,255,0.08);box-shadow:none;font-size:10px;padding:10px 24px;margin-top:8px';
-  back.textContent = '← 重新选人';
+  back.textContent = t('backBtn');
   back.addEventListener('click', () => {
     ps.classList.add('hide');
     setTimeout(() => { ps.style.display = 'none'; showPlayerSelect(); }, 360);
@@ -1774,7 +1797,7 @@ function initGame() {
   renderGrid();
   generatePieces();
   // Show difficulty badge on chip
-  const diffLabels = { easy: '😊简单', normal: '🎮标准', hard: '🔥困难' };
+  const diffLabels = { easy: t('easyBadge'), normal: t('normalBadge'), hard: t('hardBadge') };
   document.getElementById('chip-diff').textContent = diffLabels[currentDifficulty];
 }
 
@@ -1979,6 +2002,71 @@ window.addEventListener('touchend', e => {
 document.getElementById('restart-btn').addEventListener('click', initGame);
 
 // ── Boot ───────────────────────────────────────────────────────────────────
+// ── i18n ─────────────────────────────────────────────────────────────────────
+const LANGS = {
+  en: {
+    score: 'SCORE', best: 'BEST',
+    gameOver: 'GAME OVER', finalScore: 'FINAL SCORE', playAgain: 'PLAY AGAIN',
+    newWord: 'New', bestWord: 'BEST!',
+    newBestBanner: 'NEW BEST!', bestPrefix: 'BEST: ',
+    double: '✦ DOUBLE!', triple: '⚡ TRIPLE!', mega: '🔥 MEGA BLAST!',
+    leaderboard: '🏆 LEADERBOARD', personalBest: 'PERSONAL BEST',
+    currentPlayerTag: '▶ NOW PLAYING',
+    close: 'CLOSE',
+    whoAreYou: 'WHO ARE YOU?',
+    chooseDiff: 'CHOOSE DIFFICULTY',
+    backBtn: '← BACK',
+    easy: 'EASY', normal: 'NORMAL', hard: 'HARD',
+    easyDesc: 'Small pieces, easy start',
+    normalDesc: 'Classic gameplay',
+    hardDesc: 'Large complex pieces',
+    easyBadge: '😊 EASY', normalBadge: '🎮 NORMAL', hardBadge: '🔥 HARD',
+  },
+  zh: {
+    score: '得分', best: '最高',
+    gameOver: '游戏结束', finalScore: '最终得分', playAgain: '再玩一次',
+    newWord: '新', bestWord: '纪录！',
+    newBestBanner: '新纪录！', bestPrefix: '最高: ',
+    double: '✦ 双消！', triple: '⚡ 三消！', mega: '🔥 超级爆炸！',
+    leaderboard: '🏆 排行榜', personalBest: '个人最高分',
+    currentPlayerTag: '▶ 当前玩家',
+    close: '关闭',
+    whoAreYou: '你是谁？',
+    chooseDiff: '选择难度',
+    backBtn: '← 重新选人',
+    easy: '简单', normal: '标准', hard: '困难',
+    easyDesc: '小块为主，轻松上手',
+    normalDesc: '经典玩法，均衡挑战',
+    hardDesc: '大块多多，考验布局',
+    easyBadge: '😊简单', normalBadge: '🎮标准', hardBadge: '🔥困难',
+  },
+};
+
+let currentLang = localStorage.getItem('bb_lang') || 'zh';
+
+function t(key) { return (LANGS[currentLang] || LANGS.zh)[key] || key; }
+
+function applyLang() {
+  document.getElementById('lbl-score').textContent    = t('score');
+  document.getElementById('lbl-best').textContent     = t('best');
+  document.getElementById('lbl-go-title').textContent = t('gameOver');
+  document.getElementById('lbl-go-sub').textContent   = t('finalScore');
+  document.getElementById('restart-btn').textContent  = t('playAgain');
+  document.getElementById('lang-btn').textContent     = currentLang === 'zh' ? 'EN' : '中';
+  // Refresh difficulty badge if game is already running
+  if (currentDifficulty) {
+    const diffLabels = { easy: t('easyBadge'), normal: t('normalBadge'), hard: t('hardBadge') };
+    const el = document.getElementById('chip-diff');
+    if (el) el.textContent = diffLabels[currentDifficulty];
+  }
+}
+
+function toggleLang() {
+  currentLang = currentLang === 'zh' ? 'en' : 'zh';
+  localStorage.setItem('bb_lang', currentLang);
+  applyLang();
+}
+
 // ── Theme ─────────────────────────────────────────────────────────────────────
 let currentTheme = localStorage.getItem('bb_theme') || 'standard';
 
@@ -2015,6 +2103,7 @@ document.addEventListener('click', () => {
 // ── Boot ─────────────────────────────────────────────────────────────────────
 buildGrid();
 setTheme(currentTheme);
+applyLang();
 loadScores().then(() => showPlayerSelect());
 </script>
 </body>
