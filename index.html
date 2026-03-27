@@ -1231,19 +1231,21 @@ function addScore(pts) {
     scoreEl.classList.add('bump');
     setTimeout(() => scoreEl.classList.remove('bump'), 280);
   }
+  // Snapshot global best BEFORE updating anything
+  const oldGb = getGlobalBest();
+
   // Update player personal best
   if (currentPlayer) {
     const pb = getPlayerBest(currentPlayer.name);
     if (score > pb) {
       remoteScores[currentPlayer.name] = score;
       saveScores();
+      renderBestBox();
     }
   }
 
-  // Check global best (derived from remoteScores)
-  const gb = getGlobalBest();
-  if (score > gb.score) {
-    renderBestBox();
+  // Check if new all-time global best
+  if (score > oldGb.score) {
     if (!newBestShown) {
       newBestShown = true;
       showNewBest(score);
