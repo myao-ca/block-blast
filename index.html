@@ -1883,8 +1883,7 @@ function setTheme(name) {
   localStorage.setItem('bb_theme', name);
   document.body.className = name === 'standard' ? '' : name;
   COLORS = THEME_COLORS[name];
-  renderGrid();
-  renderPieces();
+  if (grid.length) { renderGrid(); renderPieces(); }
   updateThemeUI();
   document.getElementById('theme-picker').classList.remove('show');
 }
