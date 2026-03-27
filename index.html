@@ -889,6 +889,34 @@ const SHAPES = [
   [[0,1],[1,1]],                            // mini-J2
 ];
 
+// ── JSONBin ───────────────────────────────────────────────────────────────────
+const BIN_ID     = '69c602e8c3097a1dd565252d';
+const MASTER_KEY = '$2a$10$oEGNt/wGCN4/LMpNHpAyFerF9.BPRCzWYc0JUX4vQDCyjdp5Idlz2';
+const BIN_URL    = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
+let remoteScores = {}; // { '芯芯': 231, ... }
+
+async function loadScores() {
+  try {
+    const res = await fetch(BIN_URL + '/latest', {
+      headers: { 'X-Master-Key': MASTER_KEY }
+    });
+    const data = await res.json();
+    remoteScores = data.record || {};
+  } catch (e) {
+    console.warn('加载分数失败，使用空分数', e);
+    PLAYERS.forEach(p => { remoteScores[p.name] = remoteScores[p.name] || 0; });
+  }
+}
+
+function saveScores() {
+  fetch(BIN_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
+    body: JSON.stringify(remoteScores),
+  }).catch(e => console.warn('保存分数失败', e));
+}
+
 // ── Players ──────────────────────────────────────────────────────────────────
 const PLAYERS = [
   { name: '芯芯', color: '#ff44aa', emoji: '👧' },
@@ -899,20 +927,15 @@ const PLAYERS = [
   { name: '姥爷', color: '#ffcc00', emoji: '👴' },
 ];
 
-function playerBestKey(name) { return 'bb_best_' + name; }
-function getPlayerBest(name) { return parseInt(localStorage.getItem(playerBestKey(name)) || '0'); }
-function setPlayerBest(name, val) { localStorage.setItem(playerBestKey(name), val); }
+function getPlayerBest(name) { return remoteScores[name] || 0; }
 
-// Global best (across all players)
 function getGlobalBest() {
-  return {
-    score: parseInt(localStorage.getItem('bb_global_score') || '0'),
-    player: localStorage.getItem('bb_global_player') || '',
-  };
-}
-function setGlobalBest(score, player) {
-  localStorage.setItem('bb_global_score', score);
-  localStorage.setItem('bb_global_player', player);
+  let best = 0, player = '';
+  PLAYERS.forEach(p => {
+    const s = remoteScores[p.name] || 0;
+    if (s > best) { best = s; player = p.name; }
+  });
+  return { score: best, player };
 }
 
 // ── State ───────────────────────────────────────────────────────────────────
@@ -1211,13 +1234,15 @@ function addScore(pts) {
   // Update player personal best
   if (currentPlayer) {
     const pb = getPlayerBest(currentPlayer.name);
-    if (score > pb) setPlayerBest(currentPlayer.name, score);
+    if (score > pb) {
+      remoteScores[currentPlayer.name] = score;
+      saveScores();
+    }
   }
 
-  // Update global best
+  // Check global best (derived from remoteScores)
   const gb = getGlobalBest();
   if (score > gb.score) {
-    setGlobalBest(score, currentPlayer ? currentPlayer.name : '');
     renderBestBox();
     if (!newBestShown) {
       newBestShown = true;
@@ -1636,7 +1661,7 @@ document.getElementById('restart-btn').addEventListener('click', initGame);
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 buildGrid();
-showPlayerSelect();
+loadScores().then(() => showPlayerSelect());
 </script>
 </body>
 </html>
