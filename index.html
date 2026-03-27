@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>BLOCK BLAST</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --cs: 50px;
+  --gap: 3px;
+  --pad: 10px;
+  --bg: #07070f;
+  --surface: #0e0e1c;
+  --border: rgba(255,255,255,0.07);
+  --radius: 12px;
+}
+
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse 70% 50% at 10% 10%, rgba(80,0,160,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 50% at 90% 90%, rgba(0,60,180,0.12) 0%, transparent 60%);
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  font-family: 'Orbitron', sans-serif;
+  overflow-x: hidden;
+  padding: 18px 14px 30px;
+  color: #fff;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Scanlines overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 3px,
+    rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px
+  );
+  pointer-events: none;
+  z-index: 9000;
+}
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 520px;
+}
+
+/* ── HEADER ─────────────────────────────────────────────── */
+.hdr {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  background: linear-gradient(120deg, #ff3366 0%, #ffcc00 45%, #00ff88 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 14px rgba(255,80,80,0.25));
+}
+
+.scores { display: flex; gap: 8px; }
+
+.sc-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 14px;
+  text-align: center;
+  min-width: 80px;
+  transition: border-color 0.3s;
+}
+
+.sc-lbl {
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.3);
+  margin-bottom: 2px;
+}
+
+.sc-val {
+  font-family: 'Space Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  transition: transform 0.25s, color 0.25s;
+}
+
+.sc-val.bump {
+  transform: scale(1.35);
+  color: #ffcc00;
+}
+
+.sc-val.century {
+  animation: centuryPop 0.7s cubic-bezier(0.2, 0, 0.2, 1.4) forwards;
+}
+
+/* New Best overlay */
+#new-best-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.nb-flash {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(255,204,0,0.28) 0%, transparent 70%);
+  animation: nbFlash 0.9s ease-out forwards;
+}
+
+@keyframes nbFlash {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.nb-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  animation: nbText 2.0s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+}
+
+.nb-new {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: clamp(28px, 8vw, 52px);
+  letter-spacing: 10px;
+  color: #ffcc00;
+  text-shadow:
+    0 0 20px #ffcc00,
+    0 0 50px #ff9900,
+    0 0 100px #ff6600;
+  text-transform: uppercase;
+}
+
+.nb-best {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: clamp(42px, 13vw, 88px);
+  letter-spacing: 6px;
+  color: #fff;
+  text-shadow:
+    0 0 15px #ffcc00,
+    0 0 40px #ffcc00,
+    0 0 80px #ff6600,
+    0 0 120px #ff3366;
+  text-transform: uppercase;
+}
+
+.nb-score {
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(18px, 5vw, 32px);
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 3px;
+  margin-top: 6px;
+}
+
+@keyframes nbText {
+  0%   { opacity: 0; transform: scale(0.4) translateY(30px); filter: blur(12px); }
+  18%  { opacity: 1; transform: scale(1.08) translateY(0);   filter: blur(0); }
+  30%  { transform: scale(1); }
+  70%  { opacity: 1; transform: scale(1); filter: blur(0); }
+  100% { opacity: 0; transform: scale(0.9) translateY(-20px); filter: blur(6px); }
+}
+
+/* Gold shimmer on best score box when new best is active */
+.sc-box.newbest {
+  border-color: rgba(255,204,0,0.6);
+  box-shadow: 0 0 18px rgba(255,204,0,0.35), 0 0 4px rgba(255,204,0,0.2);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+@keyframes centuryPop {
+  0%   { transform: scale(1);    color: #fff;    text-shadow: none; }
+  25%  { transform: scale(1.7);  color: #ffcc00; text-shadow: 0 0 20px #ffcc00, 0 0 40px #ff6600; }
+  55%  { transform: scale(1.45); color: #ff6600; text-shadow: 0 0 14px #ff6600; }
+  100% { transform: scale(1);    color: #fff;    text-shadow: none; }
+}
+
+/* Firework particles */
+.fw-particle {
+  position: fixed;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9500;
+  animation: fwFly var(--dur) cubic-bezier(0.2, 0.8, 0.4, 1) forwards;
+}
+
+@keyframes fwFly {
+  0%   { transform: translate(0,0) scale(1);   opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(0.2); opacity: 0; }
+}
+
+.fw-trail {
+  position: fixed;
+  width: 3px;
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 9400;
+  transform-origin: bottom center;
+  animation: fwTrail 0.4s ease-in forwards;
+}
+
+@keyframes fwTrail {
+  0%   { opacity: 0.8; transform: scaleY(1); }
+  100% { opacity: 0;   transform: scaleY(0); }
+}
+
+/* ── GRID ────────────────────────────────────────────────── */
+.grid-wrap { position: relative; }
+
+#grid {
+  display: grid;
+  grid-template-columns: repeat(8, var(--cs));
+  grid-template-rows: repeat(8, var(--cs));
+  gap: var(--gap);
+  padding: var(--pad);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.03),
+    0 12px 50px rgba(0,0,0,0.7),
+    inset 0 0 30px rgba(0,0,0,0.4);
+}
+
+.cell {
+  border-radius: 7px;
+  background: rgba(255,255,255,0.024);
+  border: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.08s, box-shadow 0.08s, opacity 0.08s;
+  position: relative;
+  overflow: hidden;
+}
+
+.cell.filled {
+  border-color: rgba(255,255,255,0.18);
+  box-shadow:
+    inset 2px 2px 4px rgba(255,255,255,0.18),
+    inset -1px -1px 2px rgba(0,0,0,0.5),
+    0 0 10px var(--glow, transparent);
+}
+
+/* Shine on filled cells */
+.cell.filled::before {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: calc(50% - 4px); height: 3px;
+  background: rgba(255,255,255,0.28);
+  border-radius: 2px;
+}
+
+/* Preview states */
+.cell.pv {
+  border-color: rgba(255,255,255,0.22) !important;
+  box-shadow:
+    inset 2px 2px 4px rgba(255,255,255,0.15),
+    0 0 10px var(--glow, transparent) !important;
+}
+
+.cell.pi {
+  background: rgba(255,30,30,0.22) !important;
+  border-color: rgba(255,30,30,0.45) !important;
+  box-shadow: none !important;
+}
+
+/* Clear animation */
+.cell.clr {
+  animation: clearCell 0.48s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+@keyframes clearCell {
+  0%   { transform: scale(1);    filter: brightness(1);   opacity: 1; }
+  30%  { transform: scale(1.18); filter: brightness(2.8); opacity: 1; }
+  100% { transform: scale(0.04); filter: brightness(4);   opacity: 0; }
+}
+
+/* ── TRAY ────────────────────────────────────────────────── */
+.tray {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 10px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  min-height: 100px;
+  gap: 6px;
+}
+
+.slot {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  padding: 8px 4px;
+  min-height: 76px;
+  cursor: grab;
+  transition: transform 0.15s, opacity 0.2s, background 0.15s;
+}
+
+.slot:hover:not(.used):not(.dsrc) {
+  background: rgba(255,255,255,0.035);
+  transform: scale(1.06) translateY(-2px);
+}
+
+.slot.used {
+  opacity: 0.13;
+  pointer-events: none;
+}
+
+.slot.dsrc { opacity: 0.18; }
+
+.pgrid { display: grid; gap: 3px; }
+
+.pcell {
+  width: 17px; height: 17px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+/* ── GHOST ───────────────────────────────────────────────── */
+#ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 8000;
+  display: none;
+  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.5));
+}
+
+#ghost .pgrid { gap: 3px; }
+#ghost .pcell { border-radius: 7px; border: 1px solid rgba(255,255,255,0.18); }
+
+/* ── GAME OVER ───────────────────────────────────────────── */
+#gameover {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(7,7,15,0.93);
+  border-radius: var(--radius);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  z-index: 500;
+  backdrop-filter: blur(8px);
+}
+
+#gameover.show { display: flex; animation: goIn 0.35s cubic-bezier(0.2,0,0,1); }
+
+@keyframes goIn {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to   { opacity: 1; backdrop-filter: blur(8px); }
+}
+
+.go-title {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  color: #ff3366;
+  text-shadow: 0 0 24px rgba(255,51,102,0.7), 0 0 60px rgba(255,51,102,0.3);
+}
+
+.go-score {
+  font-family: 'Space Mono', monospace;
+  font-size: 54px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 30px rgba(255,255,255,0.15);
+  line-height: 1;
+}
+
+.go-sub {
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: rgba(255,255,255,0.28);
+  margin-top: -6px;
+}
+
+.go-best {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: rgba(255,204,0,0.7);
+}
+
+.btn {
+  margin-top: 10px;
+  padding: 13px 40px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ff3366 0%, #ff6600 100%);
+  color: #fff;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.2s;
+  box-shadow: 0 4px 20px rgba(255,51,102,0.4);
+  text-transform: uppercase;
+}
+
+.btn:hover { transform: scale(1.07); box-shadow: 0 6px 28px rgba(255,51,102,0.6); }
+.btn:active { transform: scale(0.96); }
+
+/* ── SCORE POP ───────────────────────────────────────────── */
+.spop {
+  position: absolute;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffcc00;
+  text-shadow: 0 0 12px rgba(255,204,0,1);
+  pointer-events: none;
+  z-index: 300;
+  white-space: nowrap;
+  animation: spopUp 1.0s ease-out forwards;
+}
+
+@keyframes spopUp {
+  0%   { opacity: 1; transform: translateY(0) scale(0.7); }
+  15%  { opacity: 1; transform: translateY(-8px) scale(1.15); }
+  100% { opacity: 0; transform: translateY(-52px) scale(0.9); }
+}
+
+/* ── COMBO BANNER ─────────────────────────────────────────── */
+.combo-banner {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #fff;
+  text-shadow: 0 0 12px currentColor;
+  pointer-events: none;
+  z-index: 300;
+  white-space: nowrap;
+  animation: comboPop 1.2s ease-out forwards;
+}
+
+@keyframes comboPop {
+  0%   { opacity: 0; transform: translateX(-50%) scale(0.5); }
+  20%  { opacity: 1; transform: translateX(-50%) scale(1.1); }
+  70%  { opacity: 1; transform: translateX(-50%) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) scale(0.9) translateY(-20px); }
+}
+
+/* ── RESPONSIVE ──────────────────────────────────────────── */
+@media (max-width: 450px) {
+  :root { --cs: 40px; }
+  .logo { font-size: 16px; letter-spacing: 3px; }
+  .sc-val { font-size: 15px; }
+  .sc-box { min-width: 68px; padding: 5px 10px; }
+}
+
+@media (max-width: 370px) {
+  :root { --cs: 34px; --gap: 2px; }
+  .logo { font-size: 14px; letter-spacing: 2px; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="hdr">
+    <div class="logo">Block Blast</div>
+    <div class="scores">
+      <div class="sc-box">
+        <div class="sc-lbl">SCORE</div>
+        <div class="sc-val" id="score-el">0</div>
+      </div>
+      <div class="sc-box">
+        <div class="sc-lbl">BEST</div>
+        <div class="sc-val" id="best-el">0</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid-wrap">
+    <div id="grid"></div>
+    <div id="gameover">
+      <div class="go-title">GAME OVER</div>
+      <div class="go-score" id="go-score">0</div>
+      <div class="go-sub">FINAL SCORE</div>
+      <div class="go-best" id="go-best"></div>
+      <button class="btn" id="restart-btn">PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <div class="tray" id="tray">
+    <div class="slot" id="s0" data-idx="0"></div>
+    <div class="slot" id="s1" data-idx="1"></div>
+    <div class="slot" id="s2" data-idx="2"></div>
+  </div>
+</div>
+
+<div id="ghost"></div>
+<div id="new-best-overlay"></div>
+
+<script>
+'use strict';
+
+// ── Constants ───────────────────────────────────────────────────────────────
+const N = 8;
+
+const COLORS = [
+  { bg: '#ff3366', glow: 'rgba(255,51,102,0.55)' },
+  { bg: '#ffcc00', glow: 'rgba(255,204,0,0.55)' },
+  { bg: '#00ff88', glow: 'rgba(0,255,136,0.55)' },
+  { bg: '#00aaff', glow: 'rgba(0,170,255,0.55)' },
+  { bg: '#ff6600', glow: 'rgba(255,102,0,0.55)' },
+  { bg: '#cc44ff', glow: 'rgba(200,68,255,0.55)' },
+  { bg: '#00ffee', glow: 'rgba(0,255,238,0.55)' },
+  { bg: '#ff44aa', glow: 'rgba(255,68,170,0.55)' },
+];
+
+// All piece shapes. 1 = filled, 0 = empty
+const SHAPES = [
+  [[1]],                                    // dot
+  [[1,1]],                                  // h-2
+  [[1],[1]],                                // v-2
+  [[1,1,1]],                                // h-3
+  [[1],[1],[1]],                            // v-3
+  [[1,1,1,1]],                              // h-4
+  [[1],[1],[1],[1]],                        // v-4
+  [[1,1],[1,1]],                            // 2×2
+  [[1,1,1],[1,0,0]],                        // L
+  [[1,1,1],[0,0,1]],                        // J
+  [[1,0,0],[1,1,1]],                        // L2
+  [[0,0,1],[1,1,1]],                        // J2
+  [[1,0],[1,0],[1,1]],                      // Lv
+  [[0,1],[0,1],[1,1]],                      // Jv
+  [[1,1],[1,0],[1,0]],                      // Lv2
+  [[1,1],[0,1],[0,1]],                      // Jv2
+  [[1,1,1],[0,1,0]],                        // T-up
+  [[0,1,0],[1,1,1]],                        // T-down
+  [[1,0],[1,1],[1,0]],                      // T-left
+  [[0,1],[1,1],[0,1]],                      // T-right
+  [[1,0],[1,1],[0,1]],                      // S-v
+  [[0,1],[1,1],[1,0]],                      // Z-v
+  [[0,1,1],[1,1,0]],                        // S-h
+  [[1,1,0],[0,1,1]],                        // Z-h
+  [[1,1],[1,0]],                            // mini-L
+  [[1,1],[0,1]],                            // mini-J
+  [[1,0],[1,1]],                            // mini-L2
+  [[0,1],[1,1]],                            // mini-J2
+];
+
+// ── State ───────────────────────────────────────────────────────────────────
+let grid = [];          // grid[r][c] = 0 (empty) | colorIndex+1
+let pieces = [];        // [piece0, piece1, piece2]
+let used = [];          // [bool, bool, bool]
+let score = 0;
+let best = parseInt(localStorage.getItem('bb_best') || '0');
+let animating = false;
+let newBestShown = false; // only trigger once per game
+
+// ── DOM refs ────────────────────────────────────────────────────────────────
+const gridEl   = document.getElementById('grid');
+const ghostEl  = document.getElementById('ghost');
+const scoreEl  = document.getElementById('score-el');
+const bestEl   = document.getElementById('best-el');
+const goEl     = document.getElementById('gameover');
+const goScore  = document.getElementById('go-score');
+const goBest   = document.getElementById('go-best');
+const trayEl   = document.getElementById('tray');
+let cells = []; // cells[r][c] = div
+
+// ── Utilities ───────────────────────────────────────────────────────────────
+function cs() {
+  return parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cs'));
+}
+function gap() {
+  return parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gap'));
+}
+function pad() {
+  return parseInt(getComputedStyle(document.documentElement).getPropertyValue('--pad'));
+}
+
+function randInt(n) { return Math.floor(Math.random() * n); }
+
+function countCells(shape) {
+  return shape.flat().reduce((a, v) => a + v, 0);
+}
+
+// ── Grid Build ──────────────────────────────────────────────────────────────
+function buildGrid() {
+  gridEl.innerHTML = '';
+  cells = [];
+  for (let r = 0; r < N; r++) {
+    cells[r] = [];
+    for (let c = 0; c < N; c++) {
+      const el = document.createElement('div');
+      el.className = 'cell';
+      gridEl.appendChild(el);
+      cells[r][c] = el;
+    }
+  }
+}
+
+// ── Render ──────────────────────────────────────────────────────────────────
+function renderGrid() {
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      applyCell(r, c, grid[r][c]);
+    }
+  }
+}
+
+function applyCell(r, c, v) {
+  const el = cells[r][c];
+  if (v) {
+    const col = COLORS[v - 1];
+    el.className = 'cell filled';
+    el.style.background = col.bg;
+    el.style.setProperty('--glow', col.glow);
+  } else {
+    el.className = 'cell';
+    el.style.background = '';
+    el.style.setProperty('--glow', 'transparent');
+  }
+}
+
+function renderPieces() {
+  for (let i = 0; i < 3; i++) {
+    const slot = document.getElementById('s' + i);
+    slot.innerHTML = '';
+    if (!pieces[i] || used[i]) {
+      slot.className = 'slot used';
+      continue;
+    }
+    slot.className = 'slot';
+    slot.appendChild(buildPieceGrid(pieces[i], 17));
+  }
+}
+
+function buildPieceGrid(piece, cellPx) {
+  const { shape, ci } = piece;
+  const rows = shape.length;
+  const cols = shape[0].length;
+  const col = COLORS[ci];
+  const pg = document.createElement('div');
+  pg.className = 'pgrid';
+  pg.style.gridTemplateColumns = `repeat(${cols}, ${cellPx}px)`;
+  pg.style.gridTemplateRows    = `repeat(${rows}, ${cellPx}px)`;
+  shape.forEach(row => {
+    row.forEach(v => {
+      const el = document.createElement('div');
+      el.className = 'pcell';
+      el.style.width  = cellPx + 'px';
+      el.style.height = cellPx + 'px';
+      if (v) {
+        el.style.background = col.bg;
+        el.style.boxShadow  = `0 0 6px ${col.glow}, inset 1px 1px 3px rgba(255,255,255,0.22)`;
+        el.style.borderColor = 'rgba(255,255,255,0.18)';
+      } else {
+        el.style.background = 'transparent';
+        el.style.border     = 'none';
+        el.style.boxShadow  = 'none';
+      }
+      pg.appendChild(el);
+    });
+  });
+  return pg;
+}
+
+// ── Piece Generation ─────────────────────────────────────────────────────────
+function generatePieces() {
+  for (let i = 0; i < 3; i++) {
+    pieces[i] = { shape: SHAPES[randInt(SHAPES.length)], ci: randInt(COLORS.length) };
+    used[i] = false;
+  }
+  renderPieces();
+}
+
+// ── Placement Logic ──────────────────────────────────────────────────────────
+function isValid(piece, row, col, g) {
+  g = g || grid;
+  const shape = piece.shape;
+  for (let r = 0; r < shape.length; r++) {
+    for (let c = 0; c < shape[r].length; c++) {
+      if (!shape[r][c]) continue;
+      const gr = row + r, gc = col + c;
+      if (gr < 0 || gr >= N || gc < 0 || gc >= N) return false;
+      if (g[gr][gc] !== 0) return false;
+    }
+  }
+  return true;
+}
+
+function placePiece(piece, row, col) {
+  piece.shape.forEach((shRow, r) => {
+    shRow.forEach((v, c) => {
+      if (v) grid[row + r][col + c] = piece.ci + 1;
+    });
+  });
+}
+
+// ── Line Clearing ─────────────────────────────────────────────────────────────
+async function checkAndClear() {
+  const fullRows = [], fullCols = [];
+  for (let r = 0; r < N; r++) {
+    if (grid[r].every(v => v !== 0)) fullRows.push(r);
+  }
+  for (let c = 0; c < N; c++) {
+    if (grid.every(row => row[c] !== 0)) fullCols.push(c);
+  }
+  if (!fullRows.length && !fullCols.length) return 0;
+
+  // Collect cells to clear
+  const toClear = new Set();
+  fullRows.forEach(r => { for (let c = 0; c < N; c++) toClear.add(r * N + c); });
+  fullCols.forEach(c => { for (let r = 0; r < N; r++) toClear.add(r * N + c); });
+
+  // Animate
+  toClear.forEach(idx => {
+    const r = (idx / N) | 0, c = idx % N;
+    cells[r][c].classList.add('clr');
+  });
+
+  await sleep(480);
+
+  // Clear grid data
+  toClear.forEach(idx => {
+    const r = (idx / N) | 0, c = idx % N;
+    grid[r][c] = 0;
+  });
+  renderGrid();
+
+  // Score: triangular * 10 per line + bonus for multi
+  const numLines = fullRows.length + fullCols.length;
+  let pts = 0;
+  for (let i = 1; i <= numLines; i++) pts += i * 10;
+  pts += toClear.size; // bonus per cleared cell
+
+  // Combo banner for multi-line
+  if (numLines >= 2) {
+    showComboBanner(numLines, fullRows, fullCols);
+  }
+
+  return pts;
+}
+
+function showComboBanner(numLines, rows, cols) {
+  const label = numLines >= 4 ? '🔥 MEGA BLAST!' :
+                numLines >= 3 ? '⚡ TRIPLE!' : '✦ DOUBLE!';
+  const el = document.createElement('div');
+  el.className = 'combo-banner';
+  el.textContent = label;
+  el.style.top = '40%';
+  const col = numLines >= 4 ? '#ff3366' : numLines >= 3 ? '#ff6600' : '#ffcc00';
+  el.style.color = col;
+  el.style.textShadow = `0 0 16px ${col}`;
+  document.querySelector('.grid-wrap').appendChild(el);
+  setTimeout(() => el.remove(), 1250);
+}
+
+// ── Fireworks ─────────────────────────────────────────────────────────────────
+function launchFireworks(originEl) {
+  const rect = originEl.getBoundingClientRect();
+  const ox = rect.left + rect.width  / 2;
+  const oy = rect.top  + rect.height / 2;
+
+  const palettes = [
+    ['#ff3366','#ff6600','#ffcc00','#fff'],
+    ['#00ff88','#00ffee','#00aaff','#fff'],
+    ['#cc44ff','#ff44aa','#ffcc00','#fff'],
+  ];
+  const palette = palettes[Math.floor(Math.random() * palettes.length)];
+
+  const bursts = 3 + Math.floor(Math.random() * 2); // 3-4 bursts
+  for (let b = 0; b < bursts; b++) {
+    const delay = b * 140;
+    // Spread launch points slightly
+    const bx = ox + (Math.random() - 0.5) * 160;
+    const by = oy + (Math.random() - 0.5) * 80 - 40;
+
+    // Draw trail upward
+    setTimeout(() => {
+      const trail = document.createElement('div');
+      trail.className = 'fw-trail';
+      const trailH = 30 + Math.random() * 30;
+      trail.style.cssText = `
+        left: ${bx}px; top: ${by}px;
+        height: ${trailH}px;
+        background: linear-gradient(to top, ${palette[0]}, transparent);
+      `;
+      document.body.appendChild(trail);
+      setTimeout(() => trail.remove(), 420);
+    }, delay);
+
+    // Burst particles
+    setTimeout(() => {
+      const count = 14 + Math.floor(Math.random() * 8);
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2 + Math.random() * 0.3;
+        const dist  = 60 + Math.random() * 90;
+        const tx = Math.cos(angle) * dist;
+        const ty = Math.sin(angle) * dist + dist * 0.3; // gravity bias
+        const dur = (0.6 + Math.random() * 0.5).toFixed(2) + 's';
+        const color = palette[Math.floor(Math.random() * palette.length)];
+        const size  = 4 + Math.random() * 5;
+
+        const p = document.createElement('div');
+        p.className = 'fw-particle';
+        p.style.cssText = `
+          left: ${bx}px; top: ${by}px;
+          width: ${size}px; height: ${size}px;
+          background: ${color};
+          box-shadow: 0 0 ${size * 2}px ${color};
+          --tx: ${tx}px; --ty: ${ty}px; --dur: ${dur};
+        `;
+        document.body.appendChild(p);
+        setTimeout(() => p.remove(), parseFloat(dur) * 1000 + 50);
+      }
+    }, delay + 60);
+  }
+}
+
+// ── Score UI ─────────────────────────────────────────────────────────────────
+function addScore(pts) {
+  if (!pts) return;
+  const prevHundred = Math.floor(score / 100);
+  score += pts;
+  const newHundred  = Math.floor(score / 100);
+  const hitCentury  = newHundred > prevHundred;
+
+  scoreEl.textContent = score;
+  scoreEl.classList.remove('bump', 'century');
+  void scoreEl.offsetWidth;
+  if (hitCentury) {
+    scoreEl.classList.add('century');
+    setTimeout(() => scoreEl.classList.remove('century'), 720);
+    launchFireworks(scoreEl);
+  } else {
+    scoreEl.classList.add('bump');
+    setTimeout(() => scoreEl.classList.remove('bump'), 280);
+  }
+  if (score > best) {
+    best = score;
+    localStorage.setItem('bb_best', best);
+    bestEl.textContent = best;
+    if (!newBestShown) {
+      newBestShown = true;
+      showNewBest(best);
+    }
+  }
+}
+
+function showNewBest(val) {
+  const overlay = document.getElementById('new-best-overlay');
+  overlay.innerHTML = '';
+
+  const flash = document.createElement('div');
+  flash.className = 'nb-flash';
+
+  const text = document.createElement('div');
+  text.className = 'nb-text';
+  text.innerHTML = `
+    <div class="nb-new">New</div>
+    <div class="nb-best">BEST!</div>
+    <div class="nb-score">${val}</div>
+  `;
+
+  overlay.appendChild(flash);
+  overlay.appendChild(text);
+
+  // Gold glow on best score box
+  const box = bestEl.closest('.sc-box');
+  box.classList.add('newbest');
+
+  // Heavy fireworks from center screen
+  const cx = window.innerWidth  / 2;
+  const cy = window.innerHeight / 2;
+  const fakeEl = { getBoundingClientRect: () => ({ left: cx, top: cy, width: 0, height: 0 }) };
+
+  for (let i = 0; i < 3; i++) {
+    setTimeout(() => launchFireworks(fakeEl), i * 220);
+  }
+  // Extra burst from best score box
+  setTimeout(() => launchFireworks(bestEl), 300);
+
+  setTimeout(() => {
+    overlay.innerHTML = '';
+    box.classList.remove('newbest');
+  }, 2100);
+}
+
+function showScorePop(pts, x, y) {
+  if (!pts) return;
+  const el = document.createElement('div');
+  el.className = 'spop';
+  el.textContent = '+' + pts;
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+  document.querySelector('.grid-wrap').appendChild(el);
+  setTimeout(() => el.remove(), 1050);
+}
+
+// ── Game Over ────────────────────────────────────────────────────────────────
+function canAnyFit() {
+  return pieces.some((p, i) => {
+    if (!p || used[i]) return false;
+    for (let r = 0; r <= N - p.shape.length; r++) {
+      for (let c = 0; c <= N - p.shape[0].length; c++) {
+        if (isValid(p, r, c)) return true;
+      }
+    }
+    return false;
+  });
+}
+
+function triggerGameOver() {
+  goScore.textContent = score;
+  goBest.textContent = score >= best ? 'NEW BEST!' : 'BEST: ' + best;
+  goBest.style.color = score >= best ? '#ffcc00' : 'rgba(255,255,255,0.35)';
+  goEl.classList.add('show');
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+function initGame() {
+  grid = Array.from({ length: N }, () => Array(N).fill(0));
+  score = 0;
+  animating = false;
+  newBestShown = false;
+  scoreEl.textContent = '0';
+  bestEl.textContent = best;
+  goEl.classList.remove('show');
+  renderGrid();
+  generatePieces();
+}
+
+// ── Drag & Drop ──────────────────────────────────────────────────────────────
+let drag = null;
+/*
+  drag = {
+    idx: Number,      // which slot (0-2)
+    piece: Object,    // piece being dragged
+    row: Number,      // current grid placement row
+    col: Number,      // current grid placement col
+    valid: Boolean,
+    isTouch: Boolean,
+  }
+*/
+
+function startDrag(idx, cx, cy, isTouch) {
+  if (animating || !pieces[idx] || used[idx]) return;
+  const piece = pieces[idx];
+  drag = { idx, piece, row: -99, col: -99, valid: false, isTouch };
+  document.getElementById('s' + idx).classList.add('dsrc');
+
+  // Build ghost using grid cell size
+  const cellPx = cs();
+  ghostEl.innerHTML = '';
+  ghostEl.appendChild(buildPieceGrid(piece, cellPx));
+  ghostEl.style.display = 'block';
+
+  moveDrag(cx, cy, isTouch);
+}
+
+function moveDrag(cx, cy, isTouch) {
+  if (!drag) return;
+  const piece = drag.piece;
+  const cellPx = cs();
+  const gapPx  = gap();
+  const padPx  = pad();
+  const total  = cellPx + gapPx;
+
+  const rows = piece.shape.length;
+  const cols = piece.shape[0].length;
+  const ghostW = cols * cellPx + (cols - 1) * gapPx;
+  const ghostH = rows * cellPx + (rows - 1) * gapPx;
+
+  // On touch, show piece above finger; on desktop, center on cursor
+  const touchOffset = isTouch ? -(ghostH + cellPx * 0.6) : -(ghostH / 2);
+  const ghostLeft = cx - ghostW / 2;
+  const ghostTop  = cy + touchOffset;
+
+  ghostEl.style.left = ghostLeft + 'px';
+  ghostEl.style.top  = ghostTop  + 'px';
+
+  // Map ghost top-left to grid position
+  const rect = gridEl.getBoundingClientRect();
+  const newCol = Math.round((ghostLeft - rect.left - padPx) / total);
+  const newRow = Math.round((ghostTop  - rect.top  - padPx) / total);
+
+  if (newRow !== drag.row || newCol !== drag.col) {
+    drag.row   = newRow;
+    drag.col   = newCol;
+    drag.valid = isValid(piece, newRow, newCol);
+    updatePreview();
+  }
+}
+
+function updatePreview() {
+  // Reset all cells
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      cells[r][c].classList.remove('pv', 'pi');
+      if (!grid[r][c]) {
+        cells[r][c].style.background = '';
+        cells[r][c].style.setProperty('--glow', 'transparent');
+      }
+    }
+  }
+  if (!drag) return;
+
+  const { piece, row, col, valid } = drag;
+  const col0 = COLORS[piece.ci];
+
+  piece.shape.forEach((shRow, r) => {
+    shRow.forEach((v, c) => {
+      if (!v) return;
+      const gr = row + r, gc = col + c;
+      if (gr < 0 || gr >= N || gc < 0 || gc >= N) return;
+      if (valid) {
+        cells[gr][gc].classList.add('pv');
+        cells[gr][gc].style.background = col0.bg;
+        cells[gr][gc].style.setProperty('--glow', col0.glow);
+      } else if (!grid[gr][gc]) {
+        cells[gr][gc].classList.add('pi');
+      }
+    });
+  });
+}
+
+async function endDrag(cx, cy) {
+  if (!drag) return;
+  const { idx, piece, row, col, valid } = drag;
+
+  // Clean up drag state
+  document.getElementById('s' + idx).classList.remove('dsrc');
+  ghostEl.style.display = 'none';
+
+  // Clear preview
+  drag = null;
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      cells[r][c].classList.remove('pv', 'pi');
+      if (!grid[r][c]) {
+        cells[r][c].style.background = '';
+        cells[r][c].style.setProperty('--glow', 'transparent');
+      }
+    }
+  }
+
+  if (!valid || animating) return;
+  animating = true;
+
+  // Place piece
+  placePiece(piece, row, col);
+  used[idx] = true;
+  renderGrid();
+  renderPieces();
+
+  // Score for placement
+  let pts = countCells(piece.shape);
+
+  // Clear lines
+  const clearPts = await checkAndClear();
+
+  if (clearPts > 0) {
+    pts += clearPts;
+    // Score popup near grid center
+    const rect = gridEl.getBoundingClientRect();
+    const wRect = document.querySelector('.grid-wrap').getBoundingClientRect();
+    showScorePop(clearPts,
+      rect.left - wRect.left + rect.width  / 2 - 24,
+      rect.top  - wRect.top  + rect.height / 2 - 16
+    );
+  }
+
+  addScore(pts);
+
+  // New batch when all 3 used
+  if (used.every(u => u)) generatePieces();
+
+  animating = false;
+
+  // Game over check
+  if (!canAnyFit()) {
+    setTimeout(triggerGameOver, 200);
+  }
+}
+
+// ── Sleep helper ─────────────────────────────────────────────────────────────
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Event Listeners ───────────────────────────────────────────────────────────
+
+// Mouse
+trayEl.addEventListener('mousedown', e => {
+  const slot = e.target.closest('.slot');
+  if (!slot) return;
+  e.preventDefault();
+  startDrag(+slot.dataset.idx, e.clientX, e.clientY, false);
+});
+
+window.addEventListener('mousemove', e => {
+  if (drag) { e.preventDefault(); moveDrag(e.clientX, e.clientY, false); }
+});
+
+window.addEventListener('mouseup', e => {
+  if (drag) endDrag(e.clientX, e.clientY);
+});
+
+// Touch
+trayEl.addEventListener('touchstart', e => {
+  const slot = e.target.closest('.slot');
+  if (!slot) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  startDrag(+slot.dataset.idx, t.clientX, t.clientY, true);
+}, { passive: false });
+
+window.addEventListener('touchmove', e => {
+  if (drag) {
+    e.preventDefault();
+    const t = e.touches[0];
+    moveDrag(t.clientX, t.clientY, true);
+  }
+}, { passive: false });
+
+window.addEventListener('touchend', e => {
+  if (drag) {
+    const t = e.changedTouches[0];
+    endDrag(t.clientX, t.clientY);
+  }
+});
+
+document.getElementById('restart-btn').addEventListener('click', initGame);
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+buildGrid();
+initGame();
+</script>
+</body>
+</html>
