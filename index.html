@@ -909,12 +909,25 @@ async function loadScores() {
   }
 }
 
-function saveScores() {
-  fetch(BIN_URL, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
-    body: JSON.stringify(remoteScores),
-  }).catch(e => console.warn('保存分数失败', e));
+async function saveScores() {
+  if (!currentPlayer) return;
+  try {
+    // Fetch latest first so we don't overwrite other players' data or manual edits
+    const res = await fetch(BIN_URL + '/latest', { headers: { 'X-Master-Key': MASTER_KEY } });
+    const data = await res.json();
+    const latest = data.record || {};
+    // Only update current player's score
+    latest[currentPlayer.name] = remoteScores[currentPlayer.name];
+    remoteScores = latest;
+    await fetch(BIN_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
+      body: JSON.stringify(remoteScores),
+    });
+    renderBestBox();
+  } catch (e) {
+    console.warn('保存分数失败', e);
+  }
 }
 
 // ── Players ──────────────────────────────────────────────────────────────────
