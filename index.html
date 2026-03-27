@@ -251,6 +251,29 @@ body::after {
   font-weight: 700;
 }
 
+.diff-desc {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: rgba(255,255,255,0.4);
+  text-align: center;
+  line-height: 1.4;
+  font-family: 'Space Mono', monospace;
+  font-weight: 400;
+}
+
+.ps-btn.diff-active {
+  border-width: 2px;
+  background: rgba(255,255,255,0.06);
+}
+
+/* Difficulty badge on player chip */
+.chip-diff {
+  font-size: 9px;
+  letter-spacing: 1px;
+  opacity: 0.6;
+  font-family: 'Orbitron', sans-serif;
+}
+
 .sc-val.bump {
   transform: scale(1.35);
   color: #ffcc00;
@@ -865,6 +888,7 @@ body.cute .go-sub { color: rgba(100,20,60,0.4); }
 body.cute #theme-picker { border-color: rgba(255,120,160,0.3); }
 body.cute .theme-opt { color: #6a1040; }
 body.cute .theme-opt:hover { background: rgba(255,120,160,0.1); }
+body.cute .diff-desc { color: rgba(100,20,60,0.45); }
 
 /* ── THEME: 糖果 (Candy) ─────────────────────────────────── */
 body.candy {
@@ -897,6 +921,7 @@ body.candy .go-sub { color: rgba(90,45,0,0.4); }
 body.candy #theme-picker { border-color: rgba(220,160,0,0.3); }
 body.candy .theme-opt { color: #5a2d00; }
 body.candy .theme-opt:hover { background: rgba(255,160,0,0.1); }
+body.candy .diff-desc { color: rgba(90,45,0,0.45); }
 
 /* ── THEME: 深海 (Deep Sea) ──────────────────────────────── */
 body.deepsea {
@@ -943,6 +968,7 @@ body.deepsea .sc-val { color: #e0f4ff; }
     <div class="player-chip" id="player-chip" onclick="showPlayerSelect()">
       <div class="chip-dot" id="chip-dot"></div>
       <div class="chip-name" id="chip-name">?</div>
+      <div class="chip-diff" id="chip-diff"></div>
     </div>
     <div class="trophy-btn" onclick="showLeaderboard()" title="排行榜">🏆</div>
     <div class="theme-btn" id="theme-btn" onclick="toggleThemePicker(event)" title="换主题">🎨</div>
@@ -1046,37 +1072,51 @@ const THEME_COLORS = {
 };
 let COLORS = THEME_COLORS.standard;
 
-// All piece shapes. 1 = filled, 0 = empty
-const SHAPES = [
-  [[1]],                                    // dot
-  [[1,1]],                                  // h-2
-  [[1],[1]],                                // v-2
-  [[1,1,1]],                                // h-3
-  [[1],[1],[1]],                            // v-3
-  [[1,1,1,1]],                              // h-4
-  [[1],[1],[1],[1]],                        // v-4
-  [[1,1],[1,1]],                            // 2×2
-  [[1,1,1],[1,0,0]],                        // L
-  [[1,1,1],[0,0,1]],                        // J
-  [[1,0,0],[1,1,1]],                        // L2
-  [[0,0,1],[1,1,1]],                        // J2
-  [[1,0],[1,0],[1,1]],                      // Lv
-  [[0,1],[0,1],[1,1]],                      // Jv
-  [[1,1],[1,0],[1,0]],                      // Lv2
-  [[1,1],[0,1],[0,1]],                      // Jv2
-  [[1,1,1],[0,1,0]],                        // T-up
-  [[0,1,0],[1,1,1]],                        // T-down
-  [[1,0],[1,1],[1,0]],                      // T-left
-  [[0,1],[1,1],[0,1]],                      // T-right
-  [[1,0],[1,1],[0,1]],                      // S-v
-  [[0,1],[1,1],[1,0]],                      // Z-v
-  [[0,1,1],[1,1,0]],                        // S-h
-  [[1,1,0],[0,1,1]],                        // Z-h
-  [[1,1],[1,0]],                            // mini-L
-  [[1,1],[0,1]],                            // mini-J
-  [[1,0],[1,1]],                            // mini-L2
-  [[0,1],[1,1]],                            // mini-J2
+// All piece shapes by difficulty
+const SHAPES_EASY = [
+  [[1]],
+  [[1,1]], [[1],[1]],
+  [[1,1,1]], [[1],[1],[1]],
+  [[1,1],[1,1]],
+  [[1,1],[1,0]], [[1,1],[0,1]],
+  [[1,0],[1,1]], [[0,1],[1,1]],
 ];
+
+const SHAPES_NORMAL = [
+  [[1]],
+  [[1,1]], [[1],[1]],
+  [[1,1,1]], [[1],[1],[1]],
+  [[1,1,1,1]], [[1],[1],[1],[1]],
+  [[1,1],[1,1]],
+  [[1,1,1],[1,0,0]], [[1,1,1],[0,0,1]],
+  [[1,0,0],[1,1,1]], [[0,0,1],[1,1,1]],
+  [[1,0],[1,0],[1,1]], [[0,1],[0,1],[1,1]],
+  [[1,1],[1,0],[1,0]], [[1,1],[0,1],[0,1]],
+  [[1,1,1],[0,1,0]], [[0,1,0],[1,1,1]],
+  [[1,0],[1,1],[1,0]], [[0,1],[1,1],[0,1]],
+  [[1,0],[1,1],[0,1]], [[0,1],[1,1],[1,0]],
+  [[0,1,1],[1,1,0]], [[1,1,0],[0,1,1]],
+  [[1,1],[1,0]], [[1,1],[0,1]],
+  [[1,0],[1,1]], [[0,1],[1,1]],
+];
+
+const SHAPES_HARD = [
+  ...SHAPES_NORMAL,
+  [[1,1,1,1,1]],
+  [[1],[1],[1],[1],[1]],
+  [[1,1,1],[1,0,0],[1,0,0]],
+  [[1,1,1],[0,0,1],[0,0,1]],
+  [[1,0,0],[1,0,0],[1,1,1]],
+  [[0,0,1],[0,0,1],[1,1,1]],
+  [[1,1,1,1],[0,0,0,1]],
+  [[1,1,1,1],[1,0,0,0]],
+  [[1,1,0],[0,1,0],[0,1,1]],
+  [[0,0,1],[0,1,1],[1,1,0]],
+  [[1,1,1],[1,0,1]],
+];
+
+const SHAPES_BY_DIFF = { easy: SHAPES_EASY, normal: SHAPES_NORMAL, hard: SHAPES_HARD };
+let currentDifficulty = 'normal';
 
 // ── JSONBin ───────────────────────────────────────────────────────────────────
 const BIN_ID     = '69c602e8c3097a1dd565252d';
@@ -1275,7 +1315,8 @@ function buildPieceGrid(piece, cellPx) {
 // ── Piece Generation ─────────────────────────────────────────────────────────
 function generatePieces() {
   for (let i = 0; i < 3; i++) {
-    pieces[i] = { shape: SHAPES[randInt(SHAPES.length)], ci: randInt(COLORS.length) };
+    const pool = SHAPES_BY_DIFF[currentDifficulty];
+    pieces[i] = { shape: pool[randInt(pool.length)], ci: randInt(COLORS.length) };
     used[i] = false;
   }
   renderPieces();
@@ -1653,12 +1694,72 @@ function selectPlayer(player) {
   chipName.textContent = player.name;
   chipName.style.color = player.color;
 
-  // Hide player select
+  // Transition to difficulty screen
   const ps = document.getElementById('player-select');
   ps.classList.add('hide');
-  setTimeout(() => { ps.style.display = 'none'; }, 360);
+  setTimeout(() => {
+    ps.style.display = 'none';
+    showDifficultySelect();
+  }, 360);
+}
 
-  initGame();
+function showDifficultySelect() {
+  const ps = document.getElementById('player-select');
+  ps.innerHTML = '';
+  ps.classList.remove('hide');
+  ps.style.display = 'flex';
+
+  const diffs = [
+    { key: 'easy',   emoji: '😊', label: '简单', desc: '小块为主，轻松上手', color: '#00cc66' },
+    { key: 'normal', emoji: '🎮', label: '标准', desc: '经典玩法，均衡挑战', color: '#00aaff' },
+    { key: 'hard',   emoji: '🔥', label: '困难', desc: '大块多多，考验布局', color: '#ff4444' },
+  ];
+
+  const saved = localStorage.getItem('bb_diff_' + currentPlayer.name) || 'normal';
+
+  const title = document.createElement('div');
+  title.className = 'ps-title';
+  title.innerHTML = `<span style="color:${currentPlayer.color}">${currentPlayer.emoji} ${currentPlayer.name}</span>选择难度`;
+  ps.appendChild(title);
+
+  const grid = document.createElement('div');
+  grid.className = 'ps-grid';
+  grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+
+  diffs.forEach(d => {
+    const btn = document.createElement('button');
+    btn.className = 'ps-btn' + (d.key === saved ? ' diff-active' : '');
+    btn.style.borderColor = d.color + '55';
+    btn.style.boxShadow = d.key === saved ? `0 0 18px ${d.color}44` : '';
+    btn.innerHTML = `
+      <div class="ps-emoji">${d.emoji}</div>
+      <div class="ps-name" style="color:${d.color}">${d.label}</div>
+      <div class="diff-desc">${d.desc}</div>
+    `;
+    const start = () => {
+      localStorage.setItem('bb_diff_' + currentPlayer.name, d.key);
+      currentDifficulty = d.key;
+      ps.classList.add('hide');
+      setTimeout(() => { ps.style.display = 'none'; }, 360);
+      initGame();
+    };
+    btn.addEventListener('click', start);
+    btn.addEventListener('touchend', e => { e.preventDefault(); start(); });
+    grid.appendChild(btn);
+  });
+
+  ps.appendChild(grid);
+
+  // Back button
+  const back = document.createElement('button');
+  back.className = 'btn';
+  back.style.cssText = 'background:rgba(255,255,255,0.08);box-shadow:none;font-size:10px;padding:10px 24px;margin-top:8px';
+  back.textContent = '← 重新选人';
+  back.addEventListener('click', () => {
+    ps.classList.add('hide');
+    setTimeout(() => { ps.style.display = 'none'; showPlayerSelect(); }, 360);
+  });
+  ps.appendChild(back);
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
@@ -1672,6 +1773,9 @@ function initGame() {
   goEl.classList.remove('show');
   renderGrid();
   generatePieces();
+  // Show difficulty badge on chip
+  const diffLabels = { easy: '😊简单', normal: '🎮标准', hard: '🔥困难' };
+  document.getElementById('chip-diff').textContent = diffLabels[currentDifficulty];
 }
 
 // ── Drag & Drop ──────────────────────────────────────────────────────────────
