@@ -909,21 +909,32 @@ async function loadScores() {
   }
 }
 
+let saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveScores, 1200);
+}
+
 async function saveScores() {
   if (!currentPlayer) return;
+  const playerName  = currentPlayer.name;
+  const playerScore = remoteScores[playerName]; // 先记住，避免 async 期间被覆盖
   try {
-    // Fetch latest first so we don't overwrite other players' data or manual edits
     const res = await fetch(BIN_URL + '/latest', { headers: { 'X-Master-Key': MASTER_KEY } });
     const data = await res.json();
     const latest = data.record || {};
-    // Only update current player's score
-    latest[currentPlayer.name] = remoteScores[currentPlayer.name];
-    remoteScores = latest;
+    // 永远取最大值，绝对不允许分数变小
+    latest[playerName] = Math.max(latest[playerName] || 0, playerScore);
     await fetch(BIN_URL, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
-      body: JSON.stringify(remoteScores),
+      body: JSON.stringify(latest),
     });
+    // 更新其他玩家数据，当前玩家只取更大值
+    PLAYERS.forEach(p => {
+      if (p.name !== playerName) remoteScores[p.name] = latest[p.name] || 0;
+    });
+    remoteScores[playerName] = Math.max(remoteScores[playerName] || 0, latest[playerName]);
     renderBestBox();
   } catch (e) {
     console.warn('保存分数失败', e);
@@ -1252,7 +1263,7 @@ function addScore(pts) {
     const pb = getPlayerBest(currentPlayer.name);
     if (score > pb) {
       remoteScores[currentPlayer.name] = score;
-      saveScores();
+      scheduleSave();
       renderBestBox();
     }
   }
