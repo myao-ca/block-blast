@@ -1334,9 +1334,21 @@ function buildPieceGrid(piece, cellPx) {
 
 // ── Piece Generation ─────────────────────────────────────────────────────────
 function generatePieces() {
+  const pool = SHAPES_BY_DIFF[currentDifficulty];
+  const usedIndices = new Set();
   for (let i = 0; i < 3; i++) {
-    const pool = SHAPES_BY_DIFF[currentDifficulty];
-    pieces[i] = { shape: pool[randInt(pool.length)], ci: randInt(COLORS.length) };
+    let idx;
+    let tries = 0;
+    do {
+      idx = randInt(pool.length);
+      tries++;
+    } while (usedIndices.has(idx) && tries < 20);
+    usedIndices.add(idx);
+    // Also make sure colors are all different
+    let ci;
+    const usedColors = pieces.slice(0, i).map(p => p?.ci);
+    do { ci = randInt(COLORS.length); } while (usedColors.includes(ci));
+    pieces[i] = { shape: pool[idx], ci };
     used[i] = false;
   }
   renderPieces();
